@@ -53,3 +53,34 @@ input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid 
 @media (max-height:600px){.screen{padding:5px 9px}.page{gap:5px}.input-page{gap:5px}.amount-card{padding:5px}.input-meta input{height:29px}.key{font-size:16px}.field-label{margin-bottom:3px}.nav-btn{font-size:9px}.save-row{min-height:36px}.primary{padding:9px}.card{border-radius:14px}.day{min-height:23px}}
 @media (min-width:780px){.app{margin:0 auto}.screen{padding:16px 20px}.keypad{max-height:310px}}
 @media (prefers-reduced-motion:reduce){.page,.modal{animation:none}.key,.primary{transition:none}}
+
+/* Small iPhone / landscape: retain tap targets without allowing page scrolling. */
+@media (max-height:600px){
+ .screen{padding:4px 8px 5px}
+ .page,.input-page{gap:4px}
+ .page-head{min-height:20px}
+ .page-head h1{font-size:14px}
+ .segmented button{padding:5px 3px;font-size:10px}
+ .card{padding:7px 9px}
+ .amount-card{padding:4px 7px}
+ .amount-card .eyebrow{display:none}
+ .amount-display{font-size:25px;line-height:1.1}
+ .field-label{font-size:9px;margin-bottom:2px}
+ .chip{height:24px;font-size:9px;border-radius:8px}
+ .chips{gap:3px}
+ .input-meta input{height:26px;font-size:10px;padding:4px 7px}
+ .keypad{min-height:100px;gap:3px}
+ .key{border-radius:8px}
+ .save-row{min-height:32px}
+ .save-row .primary,.save-row .secondary{padding:6px;font-size:10px}
+ .calendar{padding:5px 7px}
+ .day{min-height:21px}
+ .stat-card .money{font-size:16px}
+ .stat-card{padding:7px}
+ .tx-row{min-height:30px;padding:3px}
+ .tx-icon{width:25px;height:25px}
+ .tx-meta{margin-top:1px}
+ .home-lead .money{font-size:25px}
+ .modal{padding:9px;gap:6px}
+ .modal-body{gap:6px}
+}
