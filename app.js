@@ -12,6 +12,7 @@ const defaults=()=>({version:1,tx:[],cards:[],accounts:[],recurring:[],categorie
 let data;try{data=Object.assign(defaults(),JSON.parse(localStorage.getItem(KEY)||"{}"));}catch(e){data=defaults();}
 for(const k of ["tx","cards","accounts","recurring","categories","checks"]){if(!Array.isArray(data[k]))data[k]=defaults()[k];}
 data.budget=data.budget||{month:0};data.prefs=data.prefs||{fixedMe:50};
+let showInputDetails=false, categoryPickerPage=0, methodPickerPage=0;
 let tab="home", month=today().slice(0,7), chosen=today(), page=0, cardPage=0, form={kind:"expense",amount:"",cat:"食費",scope:"personal",method:"cash",paidBy:"me",date:today()};
 const el=document.getElementById("screen"),overlay=document.getElementById("overlay"),modalBody=document.getElementById("modal-body"),modalTitle=document.getElementById("modal-title");
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(data));}catch(e){toast("保存できません。容量を確認してください");}};
@@ -83,32 +84,37 @@ function rowTx(t){
  return '<button class="tx-row" data-action="edit-tx" data-value="'+safe(t.id)+'" type="button"><span class="tx-icon">'+(t.kind==="income"?"＋":t.scope==="shared"?"⌂":"¥")+'</span><span class="grow"><div class="tx-name">'+safe(t.note||t.cat)+'</div><div class="tx-meta">'+safe(t.date.slice(5).replace("-","/"))+' · '+safe(t.cat)+' · '+safe(labelScope(t.scope))+' · '+safe(cName(t.method))+(t.scheduled?" · 定期":"")+'</div></span><span class="tx-money">'+(t.kind==="income"?"+":"−")+yen(t.amount)+'</span></button>';
 }
 function homeView(){
- const mk=monthKey(today()),spent=mTotal(mk),income=mIncome(mk),due=dueGroups(),dueSum=due.reduce((a,b)=>a+b.amount,0);
- const recent=sortTx(data.tx).slice(0,3);
- const b=Number(data.budget.month)||0,pct=b?Math.min(100,Math.round(spent/b*100)):0;
+ const mk=monthKey(today()),spent=mTotal(mk),due=dueGroups(),dueSum=due.reduce((a,b)=>a+b.amount,0);
+ const recent=sortTx(data.tx).slice(0,3),b=Number(data.budget.month)||0,pct=b?Math.min(100,Math.round(spent/b*100)):0;
  const checked=data.checks.includes(today())||data.tx.some(t=>t.date===today());
- return '<div class="page-head"><div><h1>家計のいま</h1><div class="subtitle">'+safe(mk.replace("-","年"))+'月の記録</div></div><button class="ghost" data-action="go-input">＋ すぐ入力</button></div>'+
- '<section class="card home-lead"><div class="eyebrow">今月の支出（出張経費は含まない）</div><div class="money">'+yen(spent)+'</div><div class="flex between" style="margin-top:6px"><span class="hint">今月の収入 '+yen(income)+'</span><span class="hint">収支 '+yen(income-spent)+'</span></div></section>'+
- '<div class="grid2"><div class="card stat-card"><div class="eyebrow">今後のカード引落予定</div><div class="money">'+yen(dueSum)+'</div><div class="hint">'+due.length+'件の請求見込み</div></div><div class="card stat-card"><div class="eyebrow">共通の生活費</div><div class="money">'+yen(mTotal(mk,"shared"))+'</div><div class="hint">個人 '+yen(mTotal(mk,"personal"))+'</div></div></div>'+
- '<section class="card section-compact"><div class="flex between"><span class="panel-title">月間予算</span><span class="eyebrow">'+(b?yen(spent)+" / "+yen(b):"未設定")+'</span></div><div class="chart-track"><div style="width:'+pct+'%"></div></div><div class="flex between" style="margin-top:7px"><span class="hint">'+(b?"利用 "+pct+"%":"設定すると使いすぎが見える")+'</span><button class="ghost" data-action="settings-budget">設定 →</button></div></section>'+
- (!checked?'<div class="note flex between"><span>今日の支出は記録しましたか？</span><button class="tiny-btn" data-action="no-spend">支出なし</button></div>':"")+
- '<section class="card recent"><div class="flex between"><span class="panel-title">最近の記録</span><button class="ghost" data-action="go-household">カレンダー →</button></div><div class="recent-list">'+(recent.length?recent.map(rowTx).join(""):'<div class="empty">まだ記録がありません。<br>「入力」から始めましょう。</div>')+'</div></section>';
+ const first=!data.tx.length;
+ return '<div class="page-head"><div><h1>ホーム</h1><div class="subtitle">今日もかんたんに記録</div></div><button class="ghost" data-action="howto">使い方 ？</button></div>'+
+ '<section class="card home-lead"><div class="eyebrow">今月使ったお金</div><div class="money">'+yen(spent)+'</div><div class="hint" style="margin-top:5px">カード払いも、使った月の支出に含みます</div></section>'+
+ '<button type="button" data-action="go-input" class="home-start"><span class="home-start-icon">＋</span><span class="home-start-text"><strong>支出を入力する</strong><small>金額を押して、保存するだけ</small></span><span class="home-start-arrow">→</span></button>'+
+ (first?'<section class="card starter-card"><div class="panel-title">まずは、ここから</div><div class="starter-line"><span>①</span>下の「入力」で金額を入れる</div><div class="starter-line"><span>②</span>用途と支払方法を選んで保存</div><div class="starter-line"><span>③</span>カードの登録は必要なときでOK</div><button class="ghost" data-action="go-cards">カードを登録する →</button></section>':
+ '<div class="grid2"><div class="card stat-card"><div class="eyebrow">カードの引落予定</div><div class="money">'+yen(dueSum)+'</div><div class="hint">登録済み分の概算</div></div><div class="card stat-card"><div class="eyebrow">夫婦共通の支出</div><div class="money">'+yen(mTotal(mk,"shared"))+'</div><div class="hint">今月の合計</div></div></div>')+
+ (first?"":'<section class="card section-compact"><div class="flex between"><span class="panel-title">今月の予算</span><span class="eyebrow">'+(b?yen(spent)+" / "+yen(b):"未設定")+'</span></div><div class="chart-track"><div style="width:'+pct+'%"></div></div><div class="flex between" style="margin-top:7px"><span class="hint">'+(b?"予算の"+pct+"%を使用":"設定は後からでもOK")+'</span><button class="ghost" data-action="settings-budget">予算設定 →</button></div></section>')+
+ (!checked&&!first?'<div class="note flex between"><span>今日の支出は記録した？</span><button class="tiny-btn" data-action="no-spend">支出なし</button></div>':"")+
+ '<section class="card recent"><div class="flex between"><span class="panel-title">最近の支出</span><button class="ghost" data-action="go-household">履歴を見る →</button></div><div class="recent-list">'+(recent.length?recent.map(rowTx).join(""):'<div class="empty">まだ記録はありません。<br>最初の1件を登録してみましょう。</div>')+'</div></section>';
 }
 function inputView(){
  const income=form.kind==="income",amount=Number(form.amount)||0;
- const methods=[{id:"cash",name:"現金"},...data.cards.slice(0,3).map(c=>({id:c.id,name:c.name}))];
- const cats=income?["給与","賞与","副収入","その他"]:data.categories.slice(0,8);
- if(!cats.includes(form.cat)){form.cat=cats[0]||"その他";}
- if(!methods.some(m=>m.id===form.method)){form.method="cash";}
- return '<div class="page-head"><h1>かんたん入力</h1><span class="pill">1画面で完了</span></div>'+
- '<div class="segmented"><button class="'+(!income?"selected":"")+'" data-action="kind" data-value="expense">支出</button><button class="'+(income?"selected":"")+'" data-action="kind" data-value="income">収入</button></div>'+
- '<div class="card amount-card"><div class="eyebrow">金額を入力</div><div class="amount-display" id="amount-value">'+yen(amount)+'</div></div>'+
- '<div><div class="field-label">カテゴリー</div><div class="chips">'+cats.slice(0,8).map(c=>inputChip(c,"set-category",c,form.cat)).join("")+'</div></div>'+
- '<div><div class="field-label">支払方法</div><div class="chips">'+methods.map(c=>inputChip(c.name,"set-method",c.id,form.method)).join("")+'</div></div>'+
- '<div class="input-grid"><div><div class="field-label">用途</div><div class="segmented"><button class="'+(form.scope==="personal"?"selected":"")+'" data-action="scope" data-value="personal">個人</button><button class="'+(form.scope==="shared"?"selected":"")+'" data-action="scope" data-value="shared">夫婦共通</button></div></div><div><div class="field-label">支払った人</div><div class="segmented"><button class="'+(form.paidBy==="me"?"selected":"")+'" data-action="paid-by" data-value="me">自分</button><button class="'+(form.paidBy==="partner"?"selected":"")+'" data-action="paid-by" data-value="partner">相手</button></div></div></div>'+
- '<div class="input-meta"><input aria-label="日付" type="date" id="entry-date" value="'+safe(form.date)+'" max="2099-12-31"><input aria-label="メモ" type="text" id="entry-note" placeholder="メモ（任意）" maxlength="50" style="flex:1"></div>'+
+ const cats=income?["給与","賞与","副収入","その他"]:data.categories;
+ if(!cats.includes(form.cat))form.cat=cats[0]||"その他";
+ if(form.method!=="cash"&&!data.cards.some(c=>c.id===form.method))form.method="cash";
+ const common=cats.slice(0,4),more=!common.includes(form.cat),activeCard=data.cards.find(c=>c.id===form.method);
+ const methods=[{id:"cash",name:"現金"},...data.cards.slice(0,2).map(c=>({id:c.id,name:c.name}))];
+ const topHas=methods.some(m=>m.id===form.method);
+ return '<div class="page-head"><h1>支出をかんたん記録</h1><button class="ghost" data-action="howto">使い方 ？</button></div>'+
+ '<div class="segmented kind-mode"><button class="'+(!income?"selected":"")+'" data-action="kind" data-value="expense">支出</button><button class="'+(income?"selected":"")+'" data-action="kind" data-value="income">収入</button></div>'+
+ '<div class="card amount-card"><div class="eyebrow">① いくら？</div><div class="amount-display" id="amount-value">'+yen(amount)+'</div></div>'+
+ '<div class="quick-group"><div class="field-label">② 何に使った？ <span class="selection-label">'+safe(form.cat)+'</span></div><div class="chips quick-chips">'+common.map(c=>inputChip(c,"set-category",c,form.cat)).join("")+'<button class="chip'+(more?" selected":"")+'" data-action="choose-category">その他の項目 ▾</button></div></div>'+
+ '<div class="quick-group"><div class="field-label">③ 何で払った？</div><div class="chips quick-chips">'+methods.map(c=>inputChip(c.name,"set-method",c.id,form.method)).join("")+'<button class="chip'+(!topHas?" selected":"")+'" data-action="'+(data.cards.length>2?"choose-method":"add-card")+'">'+(data.cards.length>2?(topHas?"他のカード ▾":safe(activeCard?activeCard.name:"他のカード")+" ▾"):"＋ カード登録")+'</button></div></div>'+
+ '<div class="quick-group"><div class="field-label">④ 誰の支出？</div><div class="segmented"><button class="'+(form.scope==="personal"?"selected":"")+'" data-action="scope" data-value="personal">自分の支出</button><button class="'+(form.scope==="shared"?"selected":"")+'" data-action="scope" data-value="shared">夫婦共通</button></div></div>'+
+ '<div class="extra-row"><button class="ghost" data-action="toggle-input-detail">'+(showInputDetails?"⌃ 日付・メモを閉じる":"＋ 日付・メモを変更")+'</button><span class="hint">'+(form.date===today()?"今日の日付":safe(form.date))+'で登録</span></div>'+
+ (showInputDetails?'<div class="input-detail"><input aria-label="日付" type="date" id="entry-date" value="'+safe(form.date)+'"><input aria-label="メモ" type="text" id="entry-note" value="'+safe(form.note||"")+'" placeholder="メモ（任意）" maxlength="50"><div class="segmented payer-mini"><button class="'+(form.paidBy==="me"?"selected":"")+'" data-action="paid-by" data-value="me">自分が払った</button><button class="'+(form.paidBy==="partner"?"selected":"")+'" data-action="paid-by" data-value="partner">相手が払った</button></div></div>':"")+
  '<div class="keypad">'+["1","2","3","4","5","6","7","8","9","C","0","⌫"].map(k=>'<button type="button" class="key'+("C⌫".includes(k)?" utility":"")+'" data-action="key" data-value="'+safe(k)+'">'+safe(k)+'</button>').join("")+'</div>'+
- '<div class="save-row"><button class="primary" data-action="save-transaction">この内容で登録する</button><button class="secondary" data-action="manage-categories">分類の編集</button></div>';
+ '<button type="button" class="primary quick-save" data-action="save-transaction" '+(!amount?'disabled':'')+'>'+(!amount?"金額を入力してください":yen(amount)+" を登録する")+'</button>';
 }
 function tripView(){
  return '<div class="page-head"><h1>出張</h1><span class="pill warn">保存制限中</span></div>'+
@@ -151,6 +157,24 @@ function closeModal(){overlay.classList.add("hidden");modalBody.innerHTML="";}
 function field(label,id,val,type="text",opts=""){return '<div class="field"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="'+type+'" value="'+safe(val)+'" '+opts+'></div>';}
 function selectField(label,id,opts,sel){
  return '<div class="field"><label for="'+id+'">'+label+'</label><select id="'+id+'">'+opts.map(o=>'<option value="'+safe(o.value)+'" '+(o.value===sel?"selected":"")+'>'+safe(o.label)+'</option>').join("")+'</select></div>';
+}
+function howtoModal(){
+ openModal("3ステップで家計簿をつける",'<div class="howto-step"><b>① 金額を押す</b><span>下の数字キーで金額を入力</span></div><div class="howto-step"><b>② 用途と支払方法を選ぶ</b><span>食費・日用品などを選択。現金なら変更不要</span></div><div class="howto-step"><b>③ 緑の登録ボタンを押す</b><span>すぐにホームとカレンダーに反映</span></div><div class="hint">カードで払うときだけ「カード」タブから最初にカードを追加してください。設定や口座登録は後で大丈夫です。</div><button class="primary" data-action="go-input">さっそく入力する →</button>');
+}
+function categoryModal(){
+ const list=form.kind==="income"?["給与","賞与","副収入","その他"]:data.categories;
+ const max=Math.max(1,Math.ceil(list.length/8));categoryPickerPage=Math.max(0,Math.min(max-1,categoryPickerPage));
+ const slice=list.slice(categoryPickerPage*8,(categoryPickerPage+1)*8);
+ openModal("カテゴリーを選ぶ",'<div class="chips">'+slice.map(c=>'<button type="button" class="chip '+(form.cat===c?"selected":"")+'" data-action="pick-category" data-value="'+safe(c)+'">'+safe(c)+'</button>').join("")+'</div>'+
+ '<div class="pager"><button data-action="category-prev" '+(categoryPickerPage===0?"disabled":"")+'>‹</button><span>'+(categoryPickerPage+1)+' / '+max+'</span><button data-action="category-next" '+(categoryPickerPage>=max-1?"disabled":"")+'>›</button></div>'+
+ '<button class="ghost" data-action="manage-categories">＋ カテゴリーを編集</button>');
+}
+function methodModal(){
+ const list=data.cards;const max=Math.max(1,Math.ceil(list.length/6));methodPickerPage=Math.max(0,Math.min(max-1,methodPickerPage));
+ const slice=list.slice(methodPickerPage*6,(methodPickerPage+1)*6);
+ openModal("支払ったカードを選ぶ",'<div class="chips">'+slice.map(c=>'<button type="button" class="chip '+(form.method===c.id?"selected":"")+'" data-action="pick-method" data-value="'+safe(c.id)+'">'+safe(c.name)+'</button>').join("")+'</div>'+
+ '<div class="pager"><button data-action="method-prev" '+(methodPickerPage===0?"disabled":"")+'>‹</button><span>'+(methodPickerPage+1)+' / '+max+'</span><button data-action="method-next" '+(methodPickerPage>=max-1?"disabled":"")+'>›</button></div>'+
+ '<button class="secondary" data-action="add-card">＋ 新しいカードを登録</button>');
 }
 function settingsHome(){
  openModal("設定",'<div class="modal-grid">'+
@@ -229,6 +253,16 @@ function listenClick(ev){
  case "go-input":closeModal();switchTab("input");break;
  case "go-cards":closeModal();switchTab("cards");break;
  case "go-household":closeModal();switchTab("household");break;
+ case "howto":howtoModal();break;
+ case "choose-category":categoryModal();break;
+ case "choose-method":methodModal();break;
+ case "category-prev":categoryPickerPage=Math.max(0,categoryPickerPage-1);categoryModal();break;
+ case "category-next":categoryPickerPage++;categoryModal();break;
+ case "method-prev":methodPickerPage=Math.max(0,methodPickerPage-1);methodModal();break;
+ case "method-next":methodPickerPage++;methodModal();break;
+ case "pick-category":form.cat=v;closeModal();render();break;
+ case "pick-method":form.method=v;closeModal();render();break;
+ case "toggle-input-detail":showInputDetails=!showInputDetails;render();break;
  case "kind":form.kind=v;form.cat=v==="income"?"給与":"食費";render();break;
  case "scope":form.scope=v;render();break;
  case "paid-by":form.paidBy=v;render();break;
@@ -239,13 +273,14 @@ function listenClick(ev){
    else if(v==="⌫")form.amount=form.amount.slice(0,-1);
    else if(form.amount.length<9)form.amount=(form.amount+v).replace(/^0+(?=\d)/,"");
    const out=document.getElementById("amount-value");if(out)out.textContent=yen(form.amount);
+   const saveBtn=document.querySelector(".quick-save");if(saveBtn){const n=Number(form.amount)||0;saveBtn.disabled=!n;saveBtn.textContent=n?yen(n)+" を登録する":"金額を入力してください";}
    break;
  }
  case "save-transaction":{
    const amount=Number(form.amount)||0;if(!ensureInput(amount))return;
    if(!form.date||!/^\d{4}-\d\d-\d\d$/.test(form.date)){toast("日付を指定してください");return;}
-   data.tx.push({id:uuid(),kind:form.kind,date:form.date,amount,cat:form.cat,scope:form.scope,method:form.method,paidBy:form.paidBy,note:(document.getElementById("entry-note")||{}).value||"",createdAt:new Date().toISOString()});
-   form.amount="";save();render();toast("登録しました");break;
+   data.tx.push({id:uuid(),kind:form.kind,date:form.date,amount,cat:form.cat,scope:form.scope,method:form.method,paidBy:form.paidBy,note:form.note||"",createdAt:new Date().toISOString()});
+   form.amount="";form.note="";form.date=today();showInputDetails=false;save();render();toast("登録しました。続けて入力できます");break;
  }
  case "no-spend":if(!data.checks.includes(today()))data.checks.push(today());save();render();toast("確認しました");break;
  case "add-card":cardModal("");break;
@@ -349,6 +384,7 @@ document.getElementById("settings-btn").addEventListener("click",settingsHome);
 document.getElementById("close-modal").addEventListener("click",closeModal);
 overlay.addEventListener("click",e=>{if(e.target===overlay)closeModal();});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
+document.addEventListener("input",e=>{if(e.target.id==="entry-note")form.note=e.target.value;});
 document.addEventListener("change",e=>{
  if(e.target.id==="entry-date")form.date=e.target.value;
  if(e.target.id==="restore-file")restore(e.target.files&&e.target.files[0]);
