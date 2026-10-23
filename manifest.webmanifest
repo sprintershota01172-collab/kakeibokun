@@ -1,0 +1,20 @@
+{
+  "id": "./",
+  "name": "カケイボくん",
+  "short_name": "カケイボくん",
+  "description": "日々の支出とカード請求の管理",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f0e9",
+  "theme_color": "#28513f",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
