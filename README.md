@@ -52,3 +52,7 @@ python3 -m http.server 8000
 3. カード請求の確定照合・振替二重計上の改善とCSV明細の取り込み
 4. iPhone PWAでの通知・バックグラウンド同期の実機検証
 5. 詳細分析、画面カスタマイズ、定期支出の照合、レシート解析
+
+
+## 公開の確認
+GitHub Pages の公開元を **GitHub Actions** に設定すると、`main` ブランチへの更新で `.github/workflows/pages.yml` が公開処理を実行します。`Actions` タブの `Deploy Kakeibokun PWA to GitHub Pages` で実行結果を確認してください。
